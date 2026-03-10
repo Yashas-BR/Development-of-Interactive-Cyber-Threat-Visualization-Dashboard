@@ -159,6 +159,8 @@ def build_auth_header(provider: str, api_key: str, api_secret: str = "") -> dict
         return {"x-apikey": api_key}
     elif provider == "abuseipdb":
         return {"Key": api_key}
+    elif provider == "alienvault":
+        return {"X-OTX-API-KEY": api_key, "Accept": "application/json"}
     return {}
 
 
@@ -186,17 +188,19 @@ async def check_ip_ismalicious(ip: str, headers: dict) -> Optional[dict]:
         severity = SEVERITY_MAP.get(risk_level, "Low")
         if not is_bad and severity == "Low":
             return None  # skip safe IPs
+            
+        tgt_country, tgt_lat, tgt_lon = _get_target_location(ip)
 
         return {
             "id": str(uuid.uuid4()),
             "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
             "source_ip": ip,
             "source_country": geo.get("country", "Unknown"),
-            "target_country": "User Network",
+            "target_country": tgt_country,
             "source_lat": geo.get("lat", 0.0),
             "source_lon": geo.get("lon", 0.0),
-            "target_lat": 0.0,
-            "target_lon": 0.0,
+            "target_lat": tgt_lat,
+            "target_lon": tgt_lon,
             "attack_type": _classify_attack(data),
             "severity": severity,
             "device_type": "Unknown",
@@ -282,6 +286,27 @@ def _abuseipdb_device_type(ip: str, usage_type: str) -> str:
     return rng.choices(device_names, weights=weights, k=1)[0]
 
 
+def _get_target_location(ip: str) -> tuple[str, float, float]:
+    """Generate a consistent realistic target location for the threat."""
+    rng = random.Random(ip + "tgt")
+    
+    # 70% chance to target major datacenter hubs
+    core_countries = ["United States", "Germany", "India", "United Kingdom", "France", "Japan", "Singapore", "Australia", "Canada"]
+    # Filter to only those present in COUNTRY_COORDS just in case
+    core_countries = [c for c in core_countries if c in COUNTRY_COORDS]
+    
+    if rng.random() < 0.7 and core_countries:
+        country = rng.choice(core_countries)
+    else:
+        country = rng.choice(list(COUNTRY_COORDS.keys()))
+        
+    lat, lon = COUNTRY_COORDS[country]
+    lat += rng.uniform(-1.5, 1.5)
+    lon += rng.uniform(-1.5, 1.5)
+    
+    return f"User Network ({country})", round(lat, 4), round(lon, 4)
+
+
 async def check_ip_pulsedive(ip: str, api_key: str) -> Optional[dict]:
     """Query Pulsedive for a single IP."""
     try:
@@ -332,17 +357,19 @@ async def check_ip_pulsedive(ip: str, api_key: str) -> Optional[dict]:
             lat, lon = COUNTRY_COORDS[country]
             lat += random.uniform(-2.0, 2.0)
             lon += random.uniform(-2.0, 2.0)
+            
+            tgt_country, tgt_lat, tgt_lon = _get_target_location(ip)
 
             return {
                 "id": str(uuid.uuid4()),
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
                 "source_ip": ip,
                 "source_country": country,
-                "target_country": "User Network",
+                "target_country": tgt_country,
                 "source_lat": round(lat, 4),
                 "source_lon": round(lon, 4),
-                "target_lat": 0.0,
-                "target_lon": 0.0,
+                "target_lat": tgt_lat,
+                "target_lon": tgt_lon,
                 "attack_type": attack_type,
                 "severity": severity,
                 "device_type": _abuseipdb_device_type(ip, ""),
@@ -402,17 +429,19 @@ async def check_ip_alienvault(ip: str, headers: dict) -> Optional[dict]:
             lat, lon = COUNTRY_COORDS[country]
             lat += random.uniform(-2.0, 2.0)
             lon += random.uniform(-2.0, 2.0)
+            
+            tgt_country, tgt_lat, tgt_lon = _get_target_location(ip)
 
             return {
                 "id": str(uuid.uuid4()),
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
                 "source_ip": ip,
                 "source_country": country,
-                "target_country": "User Network",
+                "target_country": tgt_country,
                 "source_lat": round(lat, 4),
                 "source_lon": round(lon, 4),
-                "target_lat": 0.0,
-                "target_lon": 0.0,
+                "target_lat": tgt_lat,
+                "target_lon": tgt_lon,
                 "attack_type": attack_type,
                 "severity": severity,
                 "device_type": _abuseipdb_device_type(ip, ""),
@@ -466,17 +495,19 @@ async def check_ip_abuseipdb(ip: str, headers: dict) -> Optional[dict]:
         if lat != 0.0 and lon != 0.0:
             lat += random.uniform(-2.0, 2.0)
             lon += random.uniform(-2.0, 2.0)
+            
+        tgt_country, tgt_lat, tgt_lon = _get_target_location(ip)
 
         return {
             "id": str(uuid.uuid4()),
             "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
             "source_ip": ip,
             "source_country": country,
-            "target_country": "User Network",
+            "target_country": tgt_country,
             "source_lat": round(lat, 4),
             "source_lon": round(lon, 4),
-            "target_lat": 0.0,
-            "target_lon": 0.0,
+            "target_lat": tgt_lat,
+            "target_lon": tgt_lon,
             "attack_type": _abuseipdb_attack_type(ip, usage_type, score),
             "severity": severity,
             "device_type": _abuseipdb_device_type(ip, usage_type),
