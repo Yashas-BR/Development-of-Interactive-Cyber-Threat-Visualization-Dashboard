@@ -31,6 +31,24 @@ const PROVIDER_META = {
     tier: 'free',
     tierLabel: 'FREE TIER AVAILABLE',
   },
+  pulsedive: {
+    icon: '⚡',
+    color: '#00ffaa',
+    hint: 'Requires only API Key',
+    placeholder_key: 'Your API Key',
+    placeholder_secret: '',
+    tier: 'free',
+    tierLabel: 'FREE API (1k req/day)',
+  },
+  alienvault: {
+    icon: '👽',
+    color: '#34d399',
+    hint: 'Requires OTX API Key (X-OTX-API-KEY)',
+    placeholder_key: 'Your OTX API Key',
+    placeholder_secret: '',
+    tier: 'free',
+    tierLabel: 'FREE TIER AVAILABLE',
+  },
 }
 
 export default function ApiKeyPanel({ onConfigSaved, savedConfig }) {

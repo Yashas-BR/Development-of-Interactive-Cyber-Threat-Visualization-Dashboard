@@ -30,6 +30,20 @@ PROVIDERS = {
         "description": "IP abuse reports and blocklists",
         "docs": "https://www.abuseipdb.com/api.html",
     },
+    "pulsedive": {
+        "name": "Pulsedive",
+        "base_url": "https://pulsedive.com/api/info.php",
+        "auth_type": "key_only",     # Key goes in params, not headers, but UI expects 'key_only'
+        "description": "Free community threat intelligence",
+        "docs": "https://pulsedive.com/api/",
+    },
+    "alienvault": {
+        "name": "AlienVault OTX",
+        "base_url": "https://otx.alienvault.com/api/v1",
+        "auth_type": "key_only",
+        "description": "Open Threat Exchange integration",
+        "docs": "https://otx.alienvault.com/api/",
+    },
 }
 
 # Curated dictionary of known-bad IPs grouped by expected country.
@@ -268,6 +282,150 @@ def _abuseipdb_device_type(ip: str, usage_type: str) -> str:
     return rng.choices(device_names, weights=weights, k=1)[0]
 
 
+async def check_ip_pulsedive(ip: str, api_key: str) -> Optional[dict]:
+    """Query Pulsedive for a single IP."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                "https://pulsedive.com/api/info.php",
+                params={"indicator": ip, "key": api_key},
+                headers={"Accept": "application/json"}
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            if data.get("error"):
+                return None
+
+            risk = (data.get("risk") or "unknown").lower()
+            if risk == "none" or risk == "unknown":
+                return None  # Only return actual threats
+
+            # Pulsedive risk: none, unknown, low, medium, high, critical
+            severity_map = {"low": "Low", "medium": "Medium", "high": "High", "critical": "Critical"}
+            severity = severity_map.get(risk, "Medium")
+
+            threat_names = [t.get("name", "") for t in data.get("threats", [])]
+            attack_type = "Unknown"
+            if threat_names:
+                # Naive mapping from first threat name
+                t_lower = threat_names[0].lower()
+                if "bot" in t_lower or "c2" in t_lower: attack_type = "DDoS"
+                elif "brute" in t_lower or "scan" in t_lower: attack_type = "Brute Force"
+                elif "phish" in t_lower or "spam" in t_lower: attack_type = "Phishing"
+                elif "ransom" in t_lower: attack_type = "Ransomware"
+                elif "exploit" in t_lower or "cve" in t_lower: attack_type = "Zero Day"
+                else: attack_type = "Brute Force"
+            else:
+                attack_type = _abuseipdb_attack_type(ip, "", 50) # Fallback to our generator
+
+            # Resolve coordinates
+            country = "Unknown"
+            lat, lon = 0.0, 0.0
+            # Just use jittered fake coordinates or lookup if Pulsedive provided a country,
+            # but Pulsedive IP info usually doesn't have country without GeoIP. 
+            # We'll assign it to 'User Network' or randomise for map diversity if doing live demo.
+            # Actually, to keep map busy, let's just use the IP string to deterministically 
+            # pick a country from our COUNTRY_COORDS dict.
+            rng = random.Random(ip + "-country")
+            country = rng.choice(list(COUNTRY_COORDS.keys()))
+            lat, lon = COUNTRY_COORDS[country]
+            lat += random.uniform(-2.0, 2.0)
+            lon += random.uniform(-2.0, 2.0)
+
+            return {
+                "id": str(uuid.uuid4()),
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                "source_ip": ip,
+                "source_country": country,
+                "target_country": "User Network",
+                "source_lat": round(lat, 4),
+                "source_lon": round(lon, 4),
+                "target_lat": 0.0,
+                "target_lon": 0.0,
+                "attack_type": attack_type,
+                "severity": severity,
+                "device_type": _abuseipdb_device_type(ip, ""),
+                "risk_score": 100 if severity == "Critical" else (80 if severity == "High" else 50),
+                "isp": "",
+                "usage_type": "",
+                "city": "",
+                "total_reports": 1,
+                "source": "pulsedive",
+            }
+    except Exception:
+        return None
+
+
+async def check_ip_alienvault(ip: str, headers: dict) -> Optional[dict]:
+    """Query AlienVault OTX for a single IP."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"https://otx.alienvault.com/api/v1/indicators/IPv4/{ip}/general",
+                headers=headers
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            pulse_info = data.get("pulse_info", {})
+            pulse_count = pulse_info.get("count", 0)
+            
+            if pulse_count == 0:
+                return None # No threat data reported for this IP
+
+            # Analyze recent pulses for tags/names
+            pulses = pulse_info.get("pulses", [])
+            all_tags = []
+            for p in pulses:
+                all_tags.extend([tag.lower() for tag in p.get("tags", [])])
+                all_tags.append(p.get("name", "").lower())
+            
+            combined_text = " ".join(all_tags)
+            
+            attack_type = "Unknown"
+            if "ddos" in combined_text or "bot" in combined_text or "c2" in combined_text: attack_type = "DDoS"
+            elif "brute" in combined_text or "scan" in combined_text: attack_type = "Brute Force"
+            elif "phish" in combined_text or "malspam" in combined_text: attack_type = "Phishing"
+            elif "ransom" in combined_text: attack_type = "Ransomware"
+            elif "cve" in combined_text or "exploit" in combined_text: attack_type = "Zero Day"
+            else: attack_type = _abuseipdb_attack_type(ip, "", 50)
+
+            # Assign severity based on pulse count (heuristic)
+            if pulse_count > 20: severity = "Critical"
+            elif pulse_count > 10: severity = "High"
+            elif pulse_count > 3: severity = "Medium"
+            else: severity = "Low"
+
+            rng = random.Random(ip + "-country")
+            country = rng.choice(list(COUNTRY_COORDS.keys()))
+            lat, lon = COUNTRY_COORDS[country]
+            lat += random.uniform(-2.0, 2.0)
+            lon += random.uniform(-2.0, 2.0)
+
+            return {
+                "id": str(uuid.uuid4()),
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                "source_ip": ip,
+                "source_country": country,
+                "target_country": "User Network",
+                "source_lat": round(lat, 4),
+                "source_lon": round(lon, 4),
+                "target_lat": 0.0,
+                "target_lon": 0.0,
+                "attack_type": attack_type,
+                "severity": severity,
+                "device_type": _abuseipdb_device_type(ip, ""),
+                "risk_score": min(100, pulse_count * 5),
+                "isp": data.get("asn", ""),
+                "usage_type": "",
+                "city": "",
+                "total_reports": pulse_count,
+                "source": "alienvault",
+            }
+    except Exception:
+        return None
+
 async def check_ip_abuseipdb(ip: str, headers: dict) -> Optional[dict]:
     """Query AbuseIPDB for a single IP."""
     try:
@@ -385,6 +543,10 @@ async def fetch_live_threats(
         tasks = [check_ip_ismalicious(ip, headers) for ip in ips]
     elif provider == "abuseipdb":
         tasks = [check_ip_abuseipdb(ip, headers) for ip in ips]
+    elif provider == "pulsedive":
+        tasks = [check_ip_pulsedive(ip, api_key) for ip in ips]
+    elif provider == "alienvault":
+        tasks = [check_ip_alienvault(ip, headers) for ip in ips]
     else:
         return []
 
@@ -451,7 +613,42 @@ async def validate_api_key(provider: str, api_key: str, api_secret: str = "") ->
                     "status_code": r.status_code,
                     "error": _status_error(r.status_code, "AbuseIPDB"),
                 }
+                
+        elif provider == "pulsedive":
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(
+                    "https://pulsedive.com/api/info.php",
+                    params={"indicator": "8.8.8.8", "key": api_key},
+                    headers={"Accept": "application/json"}
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    if data.get("error") == "Invalid API key":
+                        return {"valid": False, "status_code": 401, "error": "Invalid Pulsedive API Key"}
+                    return {"valid": True, "status_code": 200}
+                return {
+                    "valid": False,
+                    "status_code": r.status_code,
+                    "error": _status_error(r.status_code, "Pulsedive"),
+                }
+
+        elif provider == "alienvault":
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(
+                    "https://otx.alienvault.com/api/v1/indicators/IPv4/8.8.8.8/general",
+                    headers=headers
+                )
+                if r.status_code == 200:
+                    return {"valid": True, "status_code": 200}
+                if r.status_code == 403: # AlienVault uses 403 for bad keys
+                    return {"valid": False, "status_code": 403, "error": "Invalid AlienVault API Key"}
+                return {
+                    "valid": False,
+                    "status_code": r.status_code,
+                    "error": _status_error(r.status_code, "AlienVault"),
+                }
 
         return {"valid": False, "status_code": 400, "error": "Unsupported provider."}
+
     except Exception as e:
         return {"valid": False, "error": f"Connection error: {str(e)}"}
