@@ -11,8 +11,9 @@ import FiltersBar from './components/FiltersBar.jsx'
 import AttackHistory from './components/AttackHistory.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import ApiKeyPanel from './components/ApiKeyPanel.jsx'
+import DatasetUploadTab from './components/DatasetUploadTab.jsx'
 
-const TABS = ['Overview', 'Analytics', 'Threat Map', 'Live Feed', 'API Status']
+const TABS = ['Overview', 'Analytics', 'Threat Map', 'Live Feed', 'API Status', 'Dataset Upload']
 const BASE = 'http://localhost:8000'
 
 
@@ -402,6 +403,11 @@ export default function App() {
           {/* API Status Tab */}
           {activeTab === 'API Status' && (
             <ApiStatus connected={connected} stats={stats} lastUpdate={lastUpdate} />
+          )}
+
+          {/* Dataset Upload Tab */}
+          {activeTab === 'Dataset Upload' && (
+            <DatasetUploadTab />
           )}
 
         </main>

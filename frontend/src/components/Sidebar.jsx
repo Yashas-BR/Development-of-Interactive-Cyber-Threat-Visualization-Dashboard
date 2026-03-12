@@ -1,38 +1,45 @@
 const ICONS = {
   Overview: (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   ),
   Analytics: (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   ),
   'Threat Map': (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
     </svg>
   ),
   'Live Feed': (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
-      <path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 4a10 10 0 0 1 0 16"/>
-      <path d="M3.93 20a10 10 0 0 1 0-16"/>
+      <circle cx="12" cy="12" r="2" /><path d="M16.24 7.76a6 6 0 0 1 0 8.49" />
+      <path d="M7.76 16.24a6 6 0 0 1 0-8.49" /><path d="M20.07 4a10 10 0 0 1 0 16" />
+      <path d="M3.93 20a10 10 0 0 1 0-16" />
     </svg>
   ),
   'API Status': (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
+      <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
+    </svg>
+  ),
+  'Dataset Upload': (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   ),
 }
 
 const SECTIONS = [
   { label: 'MONITORING', items: ['Overview', 'Analytics', 'Threat Map'] },
-  { label: 'INTELLIGENCE', items: ['Live Feed', 'API Status'] },
+  { label: 'INTELLIGENCE', items: ['Live Feed', 'API Status', 'Dataset Upload'] },
 ]
 
 export default function Sidebar({ activeTab, setActiveTab }) {
@@ -51,11 +58,11 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: 'rgba(0,200,255,0.15)', border: '1px solid rgba(0,200,255,0.3)' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c8ff" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
-              style={{ background: 'var(--green)', boxShadow: '0 0 6px var(--green)' }}/>
+              style={{ background: 'var(--green)', boxShadow: '0 0 6px var(--green)' }} />
           </div>
           <div>
             <div className="text-xs font-bold tracking-widest" style={{ color: 'var(--cyan)' }}>CYBERTHREAT</div>
@@ -83,6 +90,12 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 <span className="ml-auto text-xs px-1.5 py-0.5 rounded font-mono"
                   style={{ background: 'rgba(255,51,102,0.15)', color: 'var(--red)', fontSize: 10 }}>
                   LIVE
+                </span>
+              )}
+              {item === 'Dataset Upload' && (
+                <span className="ml-auto text-xs px-1.5 py-0.5 rounded font-mono"
+                  style={{ background: 'rgba(96,165,250,0.15)', color: '#60a5fa', fontSize: 10 }}>
+                  CSV
                 </span>
               )}
             </div>
