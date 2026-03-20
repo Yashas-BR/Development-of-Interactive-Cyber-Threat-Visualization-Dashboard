@@ -155,13 +155,17 @@ def get_countries(
     attack_type: str = Query(None),
     days: int = Query(None)
 ):
-    """Return source country distribution."""
+    """Return source and target country distributions."""
     try:
         df = get_filtered_df(None, severity, attack_type, days)
         src = country_distribution(df, "source_country")
-        return [{"country": k, "count": v} for k, v in sorted(src.items(), key=lambda x: -x[1])[:15]]
+        tgt = country_distribution(df, "target_country")
+        return {
+            "source": [{"country": k, "count": v} for k, v in sorted(src.items(), key=lambda x: -x[1])[:15]],
+            "target": [{"country": k, "count": v} for k, v in sorted(tgt.items(), key=lambda x: -x[1])[:15]]
+        }
     except FileNotFoundError:
-        return []
+        return {"source": [], "target": []}
 
 
 @app.get("/api/severity")

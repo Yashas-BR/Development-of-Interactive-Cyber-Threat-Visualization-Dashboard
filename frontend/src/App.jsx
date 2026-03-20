@@ -26,7 +26,7 @@ export default function App() {
   const [stats, setStats] = useState({})
   const [threats, setThreats] = useState([])
   const [types, setTypes] = useState([])
-  const [countries, setCountries] = useState([])
+  const [countries, setCountries] = useState({ source: [], target: [] })
   const [trends, setTrends] = useState([])
   const [devices, setDevices] = useState([])
   const [severity, setSeverity] = useState([])
@@ -70,15 +70,17 @@ export default function App() {
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count)
 
-    // Country distribution
-    const countryCounts = {}
+    // Country distribution (Source and Target)
+    const sourceCountryCounts = {}
+    const targetCountryCounts = {}
     events.forEach(e => {
-      if (e.source_country) countryCounts[e.source_country] = (countryCounts[e.source_country] || 0) + 1
+      if (e.source_country) sourceCountryCounts[e.source_country] = (sourceCountryCounts[e.source_country] || 0) + 1
+      if (e.target_country) targetCountryCounts[e.target_country] = (targetCountryCounts[e.target_country] || 0) + 1
     })
-    const liveCountries = Object.entries(countryCounts)
-      .map(([country, count]) => ({ country, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15)
+    const liveCountries = {
+      source: Object.entries(sourceCountryCounts).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count).slice(0, 15),
+      target: Object.entries(targetCountryCounts).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count).slice(0, 15)
+    }
 
     // Time trends (group by minute for live data — shows recent activity within the session)
     const minuteCounts = {}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Plot from 'react-plotly.js'
 import { COMMON_LAYOUT, CONFIG } from './chartConfig.js'
 
@@ -7,8 +8,11 @@ const DONUT_COLORS = [
 ]
 
 export default function CountryDistribution({ data, loading }) {
-  const labels = data?.map(d => d.country) || []
-  const values = data?.map(d => d.count) || []
+  const [view, setView] = useState('source')
+
+  const activeData = Array.isArray(data) ? data : (data?.[view] || [])
+  const labels = activeData.map(d => d.country) || []
+  const values = activeData.map(d => d.count) || []
 
   return (
     <div className="cyber-card p-5 flex flex-col" style={{ minHeight: 280 }}>
@@ -16,12 +20,31 @@ export default function CountryDistribution({ data, loading }) {
         <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
           🌍 Country Distribution
         </h3>
-        <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-          Top {labels.length} sources
-        </span>
+        <div className="flex rounded" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-dim)' }}>
+          <button
+            onClick={() => setView('source')}
+            className="px-3 py-1 text-xs font-mono transition-all"
+            style={{
+              background: view === 'source' ? 'rgba(0,200,255,0.15)' : 'transparent',
+              color: view === 'source' ? '#00c8ff' : 'var(--text-muted)'
+            }}
+          >
+            Attacking
+          </button>
+          <button
+            onClick={() => setView('target')}
+            className="px-3 py-1 text-xs font-mono transition-all"
+            style={{
+              background: view === 'target' ? 'rgba(255,51,102,0.15)' : 'transparent',
+              color: view === 'target' ? '#ff3366' : 'var(--text-muted)'
+            }}
+          >
+            Target
+          </button>
+        </div>
       </div>
 
-      {loading || !data?.length ? (
+      {loading || !activeData?.length ? (
         <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
           <span className="font-mono text-sm">{loading ? 'Loading...' : 'No data'}</span>
         </div>
