@@ -12,8 +12,10 @@ import AttackHistory from './components/AttackHistory.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import ApiKeyPanel from './components/ApiKeyPanel.jsx'
 import DatasetUploadTab from './components/DatasetUploadTab.jsx'
+import AiSummaryPanel from './components/AiSummaryPanel.jsx'
+import AiChatPanel from './components/AiChatPanel.jsx'
 
-const TABS = ['Overview', 'Analytics', 'Threat Map', 'Live Feed', 'API Status', 'Dataset Upload']
+const TABS = ['Overview', 'Analytics', 'Threat Map', 'Live Feed', 'AI Agent', 'API Status', 'Dataset Upload']
 const BASE = 'http://localhost:8000'
 
 
@@ -400,6 +402,20 @@ export default function App() {
             />
           )}
 
+          {/* AI Agent Tab */}
+          {activeTab === 'AI Agent' && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono"
+                style={{ background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.2)', color: '#a855f7' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', display: 'inline-block' }} />
+                AI Agent grounded on <strong className="mx-1">{activeThreats.length.toLocaleString()}</strong> threat events
+                {liveApiConfig ? ' · LIVE data' : ' · Simulated data'}
+              </div>
+              <AiSummaryPanel events={activeThreats} />
+              <AiChatPanel events={activeThreats} />
+            </div>
+          )}
+
           {/* API Status Tab */}
           {activeTab === 'API Status' && (
             <ApiStatus connected={connected} stats={stats} lastUpdate={lastUpdate} />
@@ -407,7 +423,7 @@ export default function App() {
 
           {/* Dataset Upload Tab */}
           {activeTab === 'Dataset Upload' && (
-            <DatasetUploadTab />
+            <DatasetUploadTab filters={filters} />
           )}
 
         </main>

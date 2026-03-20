@@ -8,6 +8,11 @@ from pydantic import BaseModel
 import pandas as pd
 import os
 import sys
+from typing import List, Optional
+from dotenv import load_dotenv
+
+# Load .env so GEMINI_API_KEY is available
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,12 +23,24 @@ from services.analytics import (
     time_series_trends, device_attack_counts, filter_data, severity_distribution
 )
 from services.live_feed import fetch_live_threats, validate_api_key, PROVIDERS
+from services.ai_agent import generate_summary, chat_with_agent, key_is_configured
 
 class ApiKeyConfig(BaseModel):
     provider: str
     api_key: str
     api_secret: str = ""
     limit: int = 15
+
+class AiSummaryRequest(BaseModel):
+    events: List[dict]
+
+class AiChatMessage(BaseModel):
+    role: str   # "user" or "model"
+    content: str
+
+class AiChatRequest(BaseModel):
+    messages: List[AiChatMessage]
+    events: List[dict]
 
 app = FastAPI(title="Cyber Threat Intelligence API", version="1.0.0")
 
@@ -179,6 +196,41 @@ def simulate_threats(count: int = Query(250)):
     df = generate_events(count)
     save_data(df, DATA_PATH)
     return {"message": f"Generated {count} threat events.", "total": len(df)}
+
+
+# ──────────────────────────────────────────────
+#  AI AGENT ENDPOINTS
+# ──────────────────────────────────────────────
+
+@app.get("/api/ai/status")
+def ai_status():
+    """Return whether the Gemini API key is configured."""
+    return {"configured": key_is_configured()}
+
+
+@app.post("/api/ai/summary")
+async def ai_summary(req: AiSummaryRequest):
+    """Generate an AI threat intelligence summary from submitted events."""
+    if not key_is_configured():
+        return JSONResponse(status_code=503, content={"error": "Groq API key not configured on the server."})
+    try:
+        summary = await generate_summary(req.events)
+        return {"summary": summary}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/ai/chat")
+async def ai_chat(req: AiChatRequest):
+    """Multi-turn chat with the AI agent grounded in submitted events."""
+    if not key_is_configured():
+        return JSONResponse(status_code=503, content={"error": "Groq API key not configured on the server."})
+    try:
+        messages = [{"role": m.role, "content": m.content} for m in req.messages]
+        reply = await chat_with_agent(messages, req.events)
+        return {"reply": reply}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # ──────────────────────────────────────────────

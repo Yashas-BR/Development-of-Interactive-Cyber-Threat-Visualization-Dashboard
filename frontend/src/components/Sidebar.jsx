@@ -35,11 +35,19 @@ const ICONS = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   ),
+  'AI Agent': (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+      <path d="M9 8h.01M15 8h.01" />
+    </svg>
+  ),
 }
 
 const SECTIONS = [
   { label: 'MONITORING', items: ['Overview', 'Analytics', 'Threat Map'] },
-  { label: 'INTELLIGENCE', items: ['Live Feed', 'API Status', 'Dataset Upload'] },
+  { label: 'INTELLIGENCE', items: ['Live Feed', 'AI Agent', 'Dataset Upload'] },
+  { label: 'SYSTEM', items: ['API Status'] },
 ]
 
 export default function Sidebar({ activeTab, setActiveTab }) {
@@ -96,6 +104,12 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 <span className="ml-auto text-xs px-1.5 py-0.5 rounded font-mono"
                   style={{ background: 'rgba(96,165,250,0.15)', color: '#60a5fa', fontSize: 10 }}>
                   CSV
+                </span>
+              )}
+              {item === 'AI Agent' && (
+                <span className="ml-auto text-xs px-1.5 py-0.5 rounded font-mono"
+                  style={{ background: 'rgba(147,51,234,0.15)', color: '#a855f7', fontSize: 10 }}>
+                  AI
                 </span>
               )}
             </div>

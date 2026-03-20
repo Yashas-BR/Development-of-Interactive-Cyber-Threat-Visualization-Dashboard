@@ -75,7 +75,7 @@ export default function AttackTrendChart({ data, loading }) {
             <Area
               type="monotone"
               dataKey="count"
-              name="Daily Attacks"
+              name="Attacks"
               stroke="#00c8ff"
               strokeWidth={2}
               fill="url(#attackGrad)"

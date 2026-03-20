@@ -7,6 +7,8 @@ import CountryDistribution from './CountryDistribution.jsx'
 import AttackTrendChart from './AttackTrendChart.jsx'
 import DeviceAttackChart from './DeviceAttackChart.jsx'
 import AttackHistory from './AttackHistory.jsx'
+import AiSummaryPanel from './AiSummaryPanel.jsx'
+import AiChatPanel from './AiChatPanel.jsx'
 
 const BASE = 'http://localhost:8000'
 
@@ -54,7 +56,7 @@ function deriveAnalytics(events) {
     return { stats, types, countries, trends, devices }
 }
 
-export default function DatasetUploadTab() {
+export default function DatasetUploadTab({ filters = {} }) {
     const [dragging, setDragging] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [error, setError] = useState('')
@@ -64,7 +66,21 @@ export default function DatasetUploadTab() {
     const [events, setEvents] = useState([])
     const inputRef = useRef(null)
 
-    const analytics = useMemo(() => deriveAnalytics(events), [events])
+    const filteredEvents = useMemo(() => {
+        let filtered = [...events]
+        if (filters.country && filters.country !== 'All') {
+            filtered = filtered.filter(e => e.source_country === filters.country || e.target_country === filters.country)
+        }
+        if (filters.severity && filters.severity !== 'All') {
+            filtered = filtered.filter(e => e.severity === filters.severity)
+        }
+        if (filters.attack_type && filters.attack_type !== 'All') {
+            filtered = filtered.filter(e => e.attack_type === filters.attack_type)
+        }
+        return filtered
+    }, [events, filters])
+
+    const analytics = useMemo(() => deriveAnalytics(filteredEvents), [filteredEvents])
 
     const handleFile = useCallback(async (file) => {
         if (!file) return
@@ -204,13 +220,13 @@ export default function DatasetUploadTab() {
                     <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono"
                         style={{ background: 'rgba(0,128,255,0.06)', border: '1px solid rgba(0,128,255,0.2)', color: '#60a5fa' }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#60a5fa', display: 'inline-block' }} />
-                        Showing UPLOADED data from <strong className="mx-1">{fileName}</strong> · {events.length.toLocaleString()} events
+                        Showing UPLOADED data from <strong className="mx-1">{fileName}</strong> · {filteredEvents.length.toLocaleString()} events
                     </div>
 
                     <StatsCards stats={analytics.stats} loading={false} />
 
                     <div style={{ height: 420 }}>
-                        <ThreatMap threats={events} loading={false} />
+                        <ThreatMap threats={filteredEvents} loading={false} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-5">
@@ -220,7 +236,16 @@ export default function DatasetUploadTab() {
                         <DeviceAttackChart data={analytics.devices} loading={false} />
                     </div>
 
-                    <AttackHistory threats={events} loading={false} />
+                    <AttackHistory threats={filteredEvents} loading={false} />
+
+                    {/* AI Section */}
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono"
+                        style={{ background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.2)', color: '#a855f7' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', display: 'inline-block' }} />
+                        AI Agent — analysing uploaded dataset · {filteredEvents.length.toLocaleString()} events
+                    </div>
+                    <AiSummaryPanel events={filteredEvents} />
+                    <AiChatPanel events={filteredEvents} />
                 </>
             )}
 
