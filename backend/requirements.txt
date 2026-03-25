@@ -1,6 +1,7 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pandas
+numpy
 pydantic
 python-dotenv
 python-multipart
