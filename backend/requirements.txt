@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pandas
+pydantic
+python-dotenv
+python-multipart
+scikit-learn
+openpyxl
+httpx
+groq
